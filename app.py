@@ -98,7 +98,8 @@ def allowed_file(filename:str)->bool:
     return "." in filename and filename.rsplit('.',1)[1].lower() in ALLOWED_EXTENSIONS
 @app.route('/api/upload',methods=['POST'])
 def upload():
-
+    itemname=request.form['itemname']
+    price=request.form['price']
     item_filedata=request.files['image']
 
     filename=item_filedata.filename
@@ -115,11 +116,59 @@ def upload():
         except Exception  as e:
             flash('colud not store file data')
             return redirect(url_for('upload'))
-
+    cursor=mydb.cursor(buffered=True)
+    cursor.execute(
+    '''
+    insert into items(
+        itemname,
+        price,
+        itemimage
+    )
+    values(%s,%s,%s)
+    ''',
+    [
+        itemname,
+        price,
+        filename
+    ]
+)
+    mydb.commit()
     return jsonify({
         'message':'File Uploaded'
     })
+@app.route('/api/items')
+def get_items():
 
+    cursor=mydb.cursor(buffered=True)
+
+    cursor.execute(
+        '''
+        select
+        itemid,
+        itemname,
+        price,
+        itemimage
+        from items
+        '''
+    )
+
+    data=cursor.fetchall()
+
+    items=[]
+
+    for item in data:
+
+        image_url=f'http://127.0.0.1:5000/static/uploads/{item[3]}'
+
+        items.append({
+
+            'itemid':item[0],
+            'itemname':item[1],
+            'price':item[2],
+            'image':image_url
+        })
+
+    return jsonify(items)
 if __name__=='__main__':
 
     app.run(debug=True)
